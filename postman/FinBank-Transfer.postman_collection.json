@@ -1,0 +1,346 @@
+{
+  "info": {
+    "name": "FinBank - Transfer qua RestTemplate (Session 07 - Ex3)",
+    "description": "Kiểm thử luồng chuyển tiền Transaction Service -> Account Service. Tất cả request đi qua API Gateway {{baseUrl}} (port 8222). Chạy theo thứ tự bằng Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8222" }
+  ],
+  "item": [
+    {
+      "name": "1. Tạo dữ liệu",
+      "item": [
+        {
+          "name": "Tạo tài khoản 1001 (10,000,000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// 409 nếu tài khoản đã được tạo ở lần chạy trước",
+                  "pm.test('Tạo mới (201) hoặc đã tồn tại (409)', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountNumber\": \"1001\",\n    \"ownerName\": \"Nguyen Van A\",\n    \"balance\": 10000000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/accounts"
+          }
+        },
+        {
+          "name": "Tạo tài khoản 1002 (5,000,000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tạo mới (201) hoặc đã tồn tại (409)', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountNumber\": \"1002\",\n    \"ownerName\": \"Tran Thi B\",\n    \"balance\": 5000000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/accounts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Account Service API",
+      "item": [
+        {
+          "name": "GET tài khoản 1001",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Đúng số tài khoản', () => pm.expect(pm.response.json().accountNumber).to.eql('1001'));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/1001" }
+        },
+        {
+          "name": "GET số dư 1001",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Có trường balance', () => pm.expect(pm.response.json()).to.have.property('balance'));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/1001/balance" }
+        },
+        {
+          "name": "PUT debit 1001 (100,000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 100000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/accounts/1001/debit"
+          }
+        },
+        {
+          "name": "PUT credit 1001 (100,000) - cộng lại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 100000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/accounts/1001/credit"
+          }
+        },
+        {
+          "name": "GET tài khoản không tồn tại (9999) - 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Có thông báo lỗi', () => pm.expect(pm.response.json().message).to.include('9999'));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/9999" }
+        }
+      ]
+    },
+    {
+      "name": "3. Test case 1 - Chuyển 2,000,000 từ 1001 sang 1002 (thành công)",
+      "item": [
+        {
+          "name": "Số dư 1001 trước khi chuyển",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('before1001', pm.response.json().balance);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/1001/balance" }
+        },
+        {
+          "name": "Số dư 1002 trước khi chuyển",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('before1002', pm.response.json().balance);"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/1002/balance" }
+        },
+        {
+          "name": "POST transfer 2,000,000",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Giao dịch SUCCESS', () => pm.expect(pm.response.json().status).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fromAccountNumber\": \"1001\",\n    \"toAccountNumber\": \"1002\",\n    \"amount\": 2000000,\n    \"description\": \"Chuyển tiền thanh toán hóa đơn\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/transactions/transfer"
+          }
+        },
+        {
+          "name": "Số dư 1001 sau khi chuyển (giảm 2,000,000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const before = Number(pm.collectionVariables.get('before1001'));",
+                  "pm.test('Số dư 1001 giảm 2,000,000', () => pm.expect(pm.response.json().balance).to.eql(before - 2000000));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/1001/balance" }
+        },
+        {
+          "name": "Số dư 1002 sau khi chuyển (tăng 2,000,000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const before = Number(pm.collectionVariables.get('before1002'));",
+                  "pm.test('Số dư 1002 tăng 2,000,000', () => pm.expect(pm.response.json().balance).to.eql(before + 2000000));"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/1002/balance" }
+        }
+      ]
+    },
+    {
+      "name": "4. Test case 2 - Chuyển 100,000,000 (không đủ số dư)",
+      "item": [
+        {
+          "name": "POST transfer 100,000,000",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Giao dịch FAILED', () => pm.expect(pm.response.json().status).to.eql('FAILED'));",
+                  "pm.test('Thông báo không đủ số dư', () => pm.expect(pm.response.json().message).to.include('không đủ số dư'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fromAccountNumber\": \"1001\",\n    \"toAccountNumber\": \"1002\",\n    \"amount\": 100000000,\n    \"description\": \"Chuyển số tiền vượt số dư\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/transactions/transfer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Test case 3 - Chuyển tới tài khoản không tồn tại (9999)",
+      "item": [
+        {
+          "name": "POST transfer tới 9999",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Giao dịch FAILED', () => pm.expect(pm.response.json().status).to.eql('FAILED'));",
+                  "pm.test('Thông báo tài khoản 9999 không tồn tại', () => pm.expect(pm.response.json().message).to.include('9999'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fromAccountNumber\": \"1001\",\n    \"toAccountNumber\": \"9999\",\n    \"amount\": 500000,\n    \"description\": \"Chuyển tới tài khoản không tồn tại\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/transactions/transfer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Lịch sử giao dịch",
+      "item": [
+        {
+          "name": "GET tất cả giao dịch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Có cả giao dịch SUCCESS và FAILED', () => {",
+                  "    const statuses = pm.response.json().map(t => t.status);",
+                  "    pm.expect(statuses).to.include('SUCCESS');",
+                  "    pm.expect(statuses).to.include('FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/transactions" }
+        }
+      ]
+    }
+  ]
+}

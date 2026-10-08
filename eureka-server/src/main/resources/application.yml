@@ -1,0 +1,14 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # Eureka Server khong tu dang ky voi chinh no
+    register-with-eureka: false
+    fetch-registry: false
